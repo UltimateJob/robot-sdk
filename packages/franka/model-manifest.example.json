@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "model_id": "franka_panda",
+  "urdf": "franka_description/robots/panda_arm_hand.urdf",
+  "package_roots": ["."],
+  "kinematic_root_frame": "panda_link0",
+  "end_effectors": {
+    "hand": "panda_hand"
+  },
+  "disabled_collision_pairs": [
+    ["panda_leftfinger", "panda_rightfinger"]
+  ],
+  "license": {
+    "spdx": "Apache-2.0",
+    "file": "LICENSE",
+    "notice": "NOTICE"
+  },
+  "source": {
+    "url": "https://github.com/frankarobotics/franka_ros",
+    "revision": "pinned-tag-or-commit"
+  }
+}

@@ -1,0 +1,49 @@
+api_version: 1
+robot:
+  id: sim-r1pro-001
+  display_name: R1 Pro Tote MuJoCo 001
+  model: r1_pro_chassis
+  backend: mujoco
+  sdk:
+    package: semantic-robot-sdk-r1pro
+    endpoint: http://127.0.0.1:8090
+    scene_instance_id: scene-instance-from-framework
+    backend_profile: r1pro-tote-mujoco-v1
+    firmware_profile: r1pro-tote-mujoco-v1
+    providers: {kinematics: local, motion: local, navigation: local}
+    options: {timeout_seconds: 10, navigation_resolution_m: 0.05, navigation_padding_m: 1.0}
+  frames:
+    world: world
+    base: base_link
+    end_effectors: {left: left_tote_load_frame, right: right_tote_load_frame}
+  tools:
+    - tool_ref: component://tool/left
+      side: left
+      kind: tote_clamp
+      frame: left_tote_load_frame
+      joint: left_tote_clamp_joint
+      travel_m: 0.039
+      normal_force_n: 60.0
+      maximum_force_n: 120.0
+    - tool_ref: component://tool/right
+      side: right
+      kind: tote_clamp
+      frame: right_tote_load_frame
+      joint: right_tote_clamp_joint
+      travel_m: 0.039
+      normal_force_n: 60.0
+      maximum_force_n: 120.0
+  kinematics:
+    urdf_path: /opt/semantic/assets/r1pro/r1_pro_tote_gripper.urdf
+    # URDF 同时引用 package://r1_pro_chassis 与
+    # package://r1_pro_tote_gripper，因此这里必须指向两个 package 的共同父目录。
+    package_directories: [/opt/semantic/assets/robot]
+    controlled_joint_groups: {left: [torso, left_arm], right: [torso, right_arm]}
+    disabled_collision_pairs:
+      - [left_tote_hook, left_tote_clamp]
+      - [right_tote_hook, right_tote_clamp]
+  # 携物时同时降低线/角速度、加速度与 jerk，避免底盘起停冲击破坏真实接触。
+  safety: {carrying_motion_scale: 0.25}
+ability_framework: {endpoint: http://127.0.0.1:8080, managed_by_instance: true}
+abilities: {}
+pilot: {robot_skill_directory: /opt/semantic/robot-skills}
