@@ -248,9 +248,7 @@ def test_r1pro_nonzero_ik_and_collision_model() -> None:
         assert actual_left.position == pytest.approx(
             shared_only_target.position, abs=endpoint_tolerance
         )
-        assert actual_right.position == pytest.approx(
-            right_anchor.position, abs=endpoint_tolerance
-        )
+        assert actual_right.position == pytest.approx(right_anchor.position, abs=endpoint_tolerance)
         assert actual_right.quaternion_xyzw == pytest.approx(
             right_anchor.quaternion_xyzw, abs=endpoint_tolerance
         )

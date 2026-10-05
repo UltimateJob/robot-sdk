@@ -141,9 +141,7 @@ class MujocoBackend:
             value = joints.get(descriptor.joint)
             if value is not None:
                 positions[descriptor.joint] = (
-                    float(value.get("position", value))
-                    if isinstance(value, dict)
-                    else float(value)
+                    float(value.get("position", value)) if isinstance(value, dict) else float(value)
                 )
 
         tools_by_side = {tool.side: tool for tool in self._capabilities.tools}

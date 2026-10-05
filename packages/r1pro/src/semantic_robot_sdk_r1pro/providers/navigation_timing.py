@@ -55,10 +55,9 @@ def base_segment_targets(route, *, initial_yaw, final_yaw, preserve_yaw=False):
         target_yaw = _nearest_angle(initial_yaw, final_yaw)
         if not math.isclose(target_yaw, initial_yaw, abs_tol=1e-6):
             current = route[-1]
-            targets.append(
-                {"base_x": current[0], "base_y": current[1], "base_yaw": target_yaw}
-            )
+            targets.append({"base_x": current[0], "base_y": current[1], "base_yaw": target_yaw})
     return targets
+
 
 def base_limits(capabilities, maximum_speed_mps, *, motion_scale=1.0):
     """生成底盘连续轨迹限制。

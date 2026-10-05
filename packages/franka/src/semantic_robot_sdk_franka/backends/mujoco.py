@@ -23,6 +23,7 @@ AbilityFramework 通过本 Backend 使用虚拟 Robot。它只发送 Robot SDK �
 from __future__ import annotations
 
 import json
+import struct
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -32,6 +33,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
+from semantic_robot_sdk_core.control import ControlSequence, SynchronizedObservation
 from semantic_robot_sdk_core.errors import BackendRequestError, BackendUnavailable
 from semantic_robot_sdk_core.models import (
     Command,
@@ -98,6 +100,96 @@ class MujocoBackend:
 
     def capabilities(self) -> RobotCapabilities:
         return self._capabilities.model_copy(deep=True)
+
+    def timed_control_configuration(self) -> dict[str, Any]:
+        """读取实际部署的控制模式/周期，供型号 Ability 在加载模型前核对。
+
+        型号 capabilities 描述 Panda 结构，不能代替本次 Runtime 选择的控制器。
+        只返回定时控制相关字段，不让调用方为此读取整套设备/Ability 目录。
+        """
+        profile = self._json("GET", self._robot_path("profile"))
+        actual = profile["capabilities"]
+        if "control_sequence" not in actual.get("commands", []):
+            raise BackendRequestError("当前 Franka Runtime 未启用定时控制序列")
+        return {
+            "control_mode": actual["control_mode"],
+            "control_period_s": actual["control_period_s"],
+        }
+
+    def scene_snapshot(self, instance_id: str) -> dict[str, Any]:
+        """读取 Runtime 原生事实，不在 SDK 解释任务或替 Skill 宣告抓取成功。"""
+        instance = urllib.parse.quote(instance_id, safe="")
+        result = self._json("GET", f"/api/v1/scene-instances/{instance}/snapshot")
+        if result["instance_id"] != instance_id or self.robot_id not in {
+            robot["robot_id"] for robot in result["robots"]
+        }:
+            raise BackendRequestError("场景快照与绑定的 Robot/实例不一致")
+        return result
+
+    def execute_sequence(self, sequence: ControlSequence, command_id: str) -> Command:
+        self._check_robot(sequence.robot_id)
+        body = {
+            "command_id": command_id,
+            "execution_id": sequence.execution_id,
+            "scene_generation": sequence.generation,
+            "type": "control_sequence",
+            "control_sequence": {
+                "control_period_s": sequence.control_period_s,
+                "samples": [sample.model_dump() for sample in sequence.samples],
+            },
+        }
+        return self._command(self._json("POST", self._robot_path("commands"), body))
+
+    def cancel_execution(self, robot_id: str, execution_id: str, generation: int) -> None:
+        self._check_robot(robot_id)
+        result = self._json(
+            "POST",
+            self._robot_path("executions", execution_id, "cancel"),
+            {
+                "scene_generation": generation,
+            },
+        )
+        if result.get("execution_id") != execution_id or result.get("status") != "cancelled":
+            raise BackendRequestError("Runtime 未确认执行取消")
+
+    def synchronized_observation(self, robot_id: str) -> SynchronizedObservation:
+        self._check_robot(robot_id)
+        _, packet = self._request("GET", self._robot_path("observation"))
+        if len(packet) < 4:
+            raise BackendRequestError("同步观测数据头不完整")
+        header_size = struct.unpack(">I", packet[:4])[0]
+        if header_size > len(packet) - 4:
+            raise BackendRequestError("同步观测数据头被截断")
+        header = json.loads(packet[4 : 4 + header_size])
+        payload = packet[4 + header_size :]
+        images = []
+        for frame in header["images"]:
+            start, size = int(frame["offset"]), int(frame["length"])
+            if (
+                start < 0
+                or size != frame["width"] * frame["height"] * 3
+                or start + size > len(payload)
+            ):
+                raise BackendRequestError("同步观测 RGB 数据长度无效")
+            images.append(
+                SensorFrame(
+                    sensor_id=frame["sensor_id"],
+                    sequence=header["sequence"],
+                    generation=header["generation"],
+                    frame_id=frame["frame_id"],
+                    encoding=frame["encoding"],
+                    width=frame["width"],
+                    height=frame["height"],
+                    observed_at=header["observed_at"],
+                    payload=payload[start : start + size],
+                )
+            )
+        return SynchronizedObservation(
+            state=self._decode_robot_state(header["robot_state"]),
+            images=images,
+            gripper_joint_positions=header["gripper_joint_positions"],
+            sim_time=header["sim_time"],
+        )
 
     def state(self, robot_id: str) -> RobotState:
         self._check_robot(robot_id)
@@ -396,9 +488,9 @@ class MujocoBackend:
 
         actual_commands = set(capability.get("commands", []))
         required_commands: set[str] = set()
-        if self._capabilities.joint_names:
+        if self._capabilities.joint_names and "control_sequence" not in actual_commands:
             required_commands.add(PlanKind.JOINT.value)
-        if self._capabilities.grippers:
+        if self._capabilities.grippers and "control_sequence" not in actual_commands:
             required_commands.add(PlanKind.GRIPPER.value)
         if self._capabilities.supports_base:
             required_commands.add(PlanKind.BASE.value)

@@ -35,8 +35,7 @@ class EndEffectorModule:
         descriptor = next((tool for tool in profile.tools if tool.side == side), None)
         if descriptor is not None and force_limit_n > descriptor.maximum_force_n:
             raise PlanningError(
-                f"夹具 {side} 力限制 {force_limit_n}N 超过Profile峰值 "
-                f"{descriptor.maximum_force_n}N"
+                f"夹具 {side} 力限制 {force_limit_n}N 超过Profile峰值 {descriptor.maximum_force_n}N"
             )
         return MotionPlan(
             plan_id=str(uuid.uuid4()),

@@ -549,7 +549,7 @@ def test_isaac_never_returns_fake_success(monkeypatch):
     )
     deployment = load_robot_deployment()
     deployment.robot.backend = "isaac"
-    with pytest.raises(Exception, match="v0.7"):
+    with pytest.raises(Exception, match="拆码垛型号不支持 Isaac"):
         R1ProSDK.from_deployment(deployment)
 
 

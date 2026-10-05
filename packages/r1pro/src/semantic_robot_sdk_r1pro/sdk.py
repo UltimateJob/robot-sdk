@@ -23,7 +23,7 @@ from typing import Callable
 
 from semantic_robot_sdk_core import BackendUnavailable, RobotDeployment, load_robot_deployment
 
-from .backends import FakeBackend, IsaacBackend, RealBackend, SharedFakeBackend
+from .backends import FakeBackend, RealBackend, SharedFakeBackend
 from .modules import (
     BaseModule,
     CommandsModule,
@@ -168,7 +168,9 @@ class R1ProSDK:
         elif robot.backend == "real":
             backend = RealBackend(driver=driver)
         else:
-            backend = IsaacBackend()
+            raise BackendUnavailable(
+                "拆码垛型号不支持 Isaac；BEHAVIOR 使用 r1pro 普通夹爪的 IsaacBackend"
+            )
 
         selection = robot.sdk.providers
         if robot.backend == "fake" and selection.kinematics in {"fake", "local"}:

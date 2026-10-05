@@ -53,6 +53,7 @@ class PlanKind(str, Enum):
     JOINT = "joint_trajectory"
     BASE = "base_trajectory"
     GRIPPER = "gripper_command"
+    CONTROL = "control_sequence"
 
 
 class Pose(StrictModel):
@@ -210,6 +211,8 @@ class MotionPlan(StrictModel):
             PlanKind.BASE: bool(self.base_trajectory),
             PlanKind.GRIPPER: self.gripper_command is not None,
         }
+        if self.kind is PlanKind.CONTROL:
+            raise ValueError("定时控制使用 ControlSequence，不属于几何规划 MotionPlan")
         if not payloads[self.kind]:
             raise ValueError(f"{self.kind.value} 计划缺少对应载荷")
         if sum(payloads.values()) != 1:

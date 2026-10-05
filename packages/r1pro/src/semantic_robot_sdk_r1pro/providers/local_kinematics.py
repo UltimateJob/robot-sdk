@@ -262,9 +262,7 @@ class PinocchioKinematics:
         import numpy as np
 
         position_tolerance = (
-            self.position_tolerance
-            if position_tolerance is None
-            else float(position_tolerance)
+            self.position_tolerance if position_tolerance is None else float(position_tolerance)
         )
         orientation_tolerance = (
             self.orientation_tolerance
@@ -354,9 +352,7 @@ class PinocchioKinematics:
             self.pin.updateFramePlacements(self.model, self.data)
             total = 0.0
             for end_effector in active_targets:
-                desired = self.data.oMf[self.root_frame].act(
-                    desired_in_root[end_effector]
-                )
+                desired = self.data.oMf[self.root_frame].act(desired_in_root[end_effector])
                 segment = self.pin.log6(
                     self.data.oMf[self.frames[end_effector]].actInv(desired)
                 ).vector
@@ -417,9 +413,7 @@ class PinocchioKinematics:
                     for end_effector in active_targets:
                         desired = self.data.oMf[self.root_frame].act(desired_in_root[end_effector])
                         frame_id = self.frames[end_effector]
-                        error_motion = self.pin.log6(
-                            self.data.oMf[frame_id].actInv(desired)
-                        )
+                        error_motion = self.pin.log6(self.data.oMf[frame_id].actInv(desired))
                         errors.append(error_motion.vector)
                         # 一次 computeJointJacobians 覆盖全部末端，逐末端只做
                         # getFrameJacobian 取列；双末端场景少算一半 Jacobian。
@@ -480,14 +474,11 @@ class PinocchioKinematics:
                         break
                     # 停滞检测放在收敛块之后：有实质改进就刷新参考点，
                     # 连续一个窗口内改进不足 1% 才判定当前起点卡死。
-                    if total_error < stagnation_reference[0] * (
-                        1.0 - stagnation_rtol
-                    ):
+                    if total_error < stagnation_reference[0] * (1.0 - stagnation_rtol):
                         stagnation_reference = (total_error, _iteration)
                     elif (
                         stagnation_reference[0] != float("inf")
-                        and _iteration - stagnation_reference[1]
-                        >= stagnation_window
+                        and _iteration - stagnation_reference[1] >= stagnation_window
                     ):
                         break
                     jacobian = np.vstack(jacobians)
@@ -546,13 +537,9 @@ class PinocchioKinematics:
                     # 原步长，真正的不可达目标交由停滞早退终止。
                     accepted = None
                     for ratio in (1.0, 0.5, 0.25, 0.125, 0.0625):
-                        candidate_q = self.pin.integrate(
-                            self.model, q, base_step * ratio
-                        )
+                        candidate_q = self.pin.integrate(self.model, q, base_step * ratio)
                         candidate_q = np.minimum(
-                            np.maximum(
-                                candidate_q, self.model.lowerPositionLimit
-                            ),
+                            np.maximum(candidate_q, self.model.lowerPositionLimit),
                             self.model.upperPositionLimit,
                         )
                         if _total_error(candidate_q) < total_error:
